@@ -1,4 +1,4 @@
-<?
+<?php
 
 $db = new SQLite3('minutes.sqlite');
 
@@ -14,7 +14,7 @@ $db = new SQLite3('minutes.sqlite');
 <body>
 <h1>Minutes Data Entry</h1>
 
-<?
+<?php
 
 if(isset($_POST['update_form'])){
 	if(isset($_POST['update'])) {
@@ -57,9 +57,9 @@ if(isset($_POST['update_form'])){
 
 <form method="post">
 <input type="hidden" name="update_form" value="update"/>
-<input type="hidden" name="meeting_id" value="<? echo($meeting_id);?>"/>
+<input type="hidden" name="meeting_id" value="<?php echo($meeting_id);?>"/>
 
-<?
+<?php
 $results = $db->query('select * from meetings where id = ' . $meeting_id);
 $row = $results->fetchArray();
 echo("<p>Meeting ID: " . $meeting_id . "<br/>");
@@ -72,7 +72,7 @@ echo("Participants: " . $row['participants'] . "</p>");
 
 <input type="submit" name="prev_meeting" value="<"/><input type="submit" name="next_meeting" value=">"/>
 
-<?
+<?php
 $results = $db->query('select * from items where meeting_id = ' . $meeting_id
 		      . ' order by id asc');
 
@@ -121,7 +121,7 @@ if($row == FALSE) {
 	echo("</tr>\n");
 echo("</table>");
 ?>
-<input type="hidden" name="item_id" value="<?echo($row['id']);?>"/>
+<input type="hidden" name="item_id" value="<?php echo($row['id']);?>"/>
 <input type="submit" name="prev" value="<"/><input type="submit" name="update" value="Update"/><input type="submit" name="next" value=">"/>
 </form>
 
