@@ -5,7 +5,7 @@ import csv, sqlite3, os.path, sys
 sqlitefile = 'minutes.sqlite'
 
 if os.path.isfile(sqlitefile):
-    print "Database already exists. Please delete it."
+    print("Database already exists. Please delete it.")
     sys.exit()
 
 meetings = ['meeting1.csv',
@@ -56,7 +56,7 @@ con.text_factory = str
 
 for filename in meetings:
     with open(filename, 'r') as csvfile:
-        print "Importing {0}...".format(filename)
+        print("Importing {0}...".format(filename))
         f = csv.reader(csvfile, delimiter=',', quotechar='"')
         line = 0
         last_topic = ''
@@ -98,5 +98,7 @@ for filename in meetings:
                 data = [item_id, meeting_id, topic, item, action, person, related]
                 cur.execute('insert into items values (?,?,?,?,?,?,?)', data)
             #print "{0} {1} {2} {3}".format(topic, item, action, person)
+
+cur.execute('alter table items add column importance integer')
 
 con.commit()
