@@ -1,5 +1,17 @@
 <?php
 
+/* Look for the item (needle) in the string of related items (haystack).
+ * This function is used to generate the checked status of the checkboxes.
+ */
+function check_checkbox($haystack, $needle){
+	if(strpos($haystack, " " . $needle . " ") === FALSE){
+		return;
+	} else {
+		return("checked ");
+	}
+}
+
+/* The SQLite3 database object */
 $db = new SQLite3('minutes.sqlite');
 
 ?>
@@ -16,10 +28,16 @@ $db = new SQLite3('minutes.sqlite');
 
 <?php
 
+/* When the HTML form is submitted, the $_POST array is set */
 if(isset($_POST['update_form'])){
+	/* If the Update button was pressed */
 	if(isset($_POST['update'])) {
+		/* All the related items are surrounded by spaces */
 		$related = ' ';
 		if(isset($_POST['related'])){
+			/* $_POST['related'] is an array. loop through each,
+			 * adding to the $related string.
+			 */
 			$arr = $_POST['related'];
 			foreach ($arr as $x) {
 				$related = $related . $x . ' ';
@@ -27,10 +45,13 @@ if(isset($_POST['update_form'])){
 		}
 		$results = $db->exec('update items set related = \'' . $related . '\' where id = ' . $_POST['item_id']);
 	}
+	/* If the Next button was pressed or the Update button was pressed */
 	if(isset($_POST['next']) || isset($_POST['update'])){
 		$item_id = $_POST['item_id'] + 1;
+	/* If the Previous button was pressed */
 	} else if(isset($_POST['prev'])){
 		$item_id = $_POST['item_id'] - 1;
+	/* By default we start with item 1 */
 	} else {
 		$item_id = 1;
 	}
@@ -49,6 +70,7 @@ if(isset($_POST['update_form'])){
 			$meeting_id = $meeting_id - 1;
 		}
 	}
+/* Default values when we haven't loaded the page because of a form action */
 } else {
 	$meeting_id = 1;
 	$item_id = 1;
@@ -60,6 +82,8 @@ if(isset($_POST['update_form'])){
 <input type="hidden" name="meeting_id" value="<?php echo($meeting_id);?>"/>
 
 <?php
+
+/* Display the meeting details */
 $results = $db->query('select * from meetings where id = ' . $meeting_id);
 $row = $results->fetchArray();
 echo("<p>Meeting ID: " . $meeting_id . "<br/>");
@@ -73,14 +97,41 @@ echo("Participants: " . $row['participants'] . "</p>");
 <input type="submit" name="prev_meeting" value="<"/><input type="submit" name="next_meeting" value=">"/>
 
 <?php
+
+/* Query database for items in current meeting */
 $results = $db->query('select * from items where meeting_id = ' . $meeting_id
 		      . ' order by id asc');
 
-$line = 0;
+/* Fetch data on subsequent meeting */
+$meeting_id = $meeting_id + 1;
+$meetingresults = $db->query('select * from meetings where id = ' . $meeting_id);
+$meetingrow = $results->fetchArray();
+
+/* Determine what item in the subsequent meeting we are linking to */
+$itemresults = $db->query('select * from items where meeting_id = ' . $meeting_id
+		      . ' and id >= ' . $item_id . ' order by id asc');
+
+/* Fetch the next item for subsequent meeting */
+$itemrow = $itemresults->fetchArray();
+
+/* If we clicked next on the last item, we won't get any results
+ * (item id is actually in the following meeting).
+ * So decrement $item_id and just show the last item again.
+ */
+if($itemrow == FALSE) {
+	$item_id = $item_id - 1;
+	$itemresults = $db->query('select * from items where meeting_id = ' . $meeting_id
+			      . ' and id >= ' . $item_id . ' order by id asc');
+	$itemrow = $itemresults->fetchArray();
+}
+
+/* Display each item in meeting and check any checkbox that is related to the
+ * item we just looked up.
+ */
 echo("<table><tr><th>Related</th><th>ID</th><th>Topic</th><th>Item</th><th>Action</th><th>Person</th></tr>");
 while ($row = $results->fetchArray()) {
 	echo("<tr>\n");
-	echo("<td><input name=\"related[]\" value=\"" . $row['id'] . "\" type=\"checkbox\"></td>\n");
+	echo("<td><input name=\"related[]\" value=\"" . $row['id'] . "\" " . check_checkbox($itemrow['related'], $row['id']) . "type=\"checkbox\"></td>\n");
 	echo("<td>" . $row['id'] . "</td>\n");
 	echo("<td>" . $row['topic'] . "</td>\n");
 	echo("<td>" . $row['item'] . "</td>\n");
@@ -90,38 +141,26 @@ while ($row = $results->fetchArray()) {
 }
 echo("</table>");
 
-$meeting_id = $meeting_id + 1;
-
-$results = $db->query('select * from meetings where id = ' . $meeting_id);
-$row = $results->fetchArray();
+/*Display the subsequent meeting details */
 echo("<p>Meeting ID: " . $meeting_id . "<br/>");
-echo("Group: " . $row['group_name'] . "<br/>");
-echo("Meeting Title: " . $row['title'] . "<br/>");
-echo("Date: " . $row['date'] . "<br/>");
-echo("Called By: " . $row['caller'] . "<br/>");
-echo("Participants: " . $row['participants'] . "</p>");
+echo("Group: " . $meetingrow['group_name'] . "<br/>");
+echo("Meeting Title: " . $meetingrow['title'] . "<br/>");
+echo("Date: " . $meetingrow['date'] . "<br/>");
+echo("Called By: " . $meetingrow['caller'] . "<br/>");
+echo("Participants: " . $meetingrow['participants'] . "</p>");
 
-$results = $db->query('select * from items where meeting_id = ' . $meeting_id
-		      . ' and id >= ' . $item_id . ' order by id asc');
+/*Display the meeting item */
 echo("<table><tr><th>ID</th><th>Topic</th><th>Item</th><th>Action</th><th>Person</th></tr>");
-
-$row = $results->fetchArray();
-if($row == FALSE) {
-	$item_id = $item_id - 1;
-	$results = $db->query('select * from items where meeting_id = ' . $meeting_id
-			      . ' and id >= ' . $item_id . ' order by id asc');
-	$row = $results->fetchArray();
-}
 	echo("<tr>\n");
-	echo("<td>" . $row['id'] . "</td>\n");
-	echo("<td>" . $row['topic'] . "</td>\n");
-	echo("<td>" . $row['item'] . "</td>\n");
-	echo("<td>" . $row['action'] . "</td>\n");
-	echo("<td>" . $row['person'] . "</td>\n");
+	echo("<td>" . $itemrow['id'] . "</td>\n");
+	echo("<td>" . $itemrow['topic'] . "</td>\n");
+	echo("<td>" . $itemrow['item'] . "</td>\n");
+	echo("<td>" . $itemrow['action'] . "</td>\n");
+	echo("<td>" . $itemrow['person'] . "</td>\n");
 	echo("</tr>\n");
 echo("</table>");
 ?>
-<input type="hidden" name="item_id" value="<?php echo($row['id']);?>"/>
+<input type="hidden" name="item_id" value="<?php echo($itemrow['id']);?>"/>
 <input type="submit" name="prev" value="<"/><input type="submit" name="update" value="Update"/><input type="submit" name="next" value=">"/>
 </form>
 
