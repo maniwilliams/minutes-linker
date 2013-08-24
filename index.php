@@ -30,6 +30,7 @@ $db = new SQLite3('minutes.sqlite');
 
 /* When the HTML form is submitted, the $_POST array is set */
 if(isset($_POST['update_form'])){
+	$meeting_id = $_POST['meeting_id'];
 	/* If the Update button was pressed */
 	if(isset($_POST['update'])) {
 		/* All the related items are surrounded by spaces */
@@ -47,34 +48,82 @@ if(isset($_POST['update_form'])){
 	}
 	/* If the Next button was pressed or the Update button was pressed */
 	if(isset($_POST['next']) || isset($_POST['update'])){
-		$item_id = $_POST['item_id'] + 1;
+		$results = $db->query('select * from items where ' .
+				      'id > ' . $_POST['item_id'] .
+				      ' and meeting_id = ' . ($meeting_id + 1) .
+				      ' and importance > 0' .
+				      ' order by id asc');
+		$row = $results->fetchArray();
+		if($row == False){
+			$item_id = $_POST['item_id'];
+		} else {
+			$item_id = $row['id'];
+		}
 	/* If the Previous button was pressed */
 	} else if(isset($_POST['prev'])){
 		$item_id = $_POST['item_id'] - 1;
+		$results = $db->query('select * from items where ' .
+				      'id < ' . $_POST['item_id'] .
+				      ' and meeting_id = ' . ($meeting_id + 1).
+				      ' and importance > 0' .
+				      ' order by id desc');
+		$row = $results->fetchArray();
+		if($row == False){
+			$item_id = $_POST['item_id'];
+		} else {
+			$item_id = $row['id'];
+		}
 	/* By default we start with item 1 */
 	} else {
 		$item_id = 1;
 	}
-	$meeting_id = $_POST['meeting_id'];
 	if(isset($_POST['next_meeting'])){
 		$meeting_id = $meeting_id + 1;
-		$results = $db->query('select * from items where meeting_id = ' . $meeting_id);
+		$results = $db->query('select * from items where ' .
+				      ' meeting_id = ' . ($meeting_id + 1).
+				      ' and importance > 0' .
+				      ' order by id asc');
 		$row = $results->fetchArray();
 		if ($row == FALSE) {
 			$meeting_id = $meeting_id - 1;
 			$item_id = $_POST['item_id'];
+		} else {
+			$item_id = $row['id'];
 		}
 	}
 	if(isset($_POST['prev_meeting'])){
 		if($meeting_id > 1){
 			$meeting_id = $meeting_id - 1;
 		}
+		$results = $db->query('select * from items where ' .
+				      ' meeting_id = ' . ($meeting_id + 1).
+				      ' and importance > 0' .
+				      ' order by id asc');
+		$row = $results->fetchArray();
+		if ($row == FALSE) {
+			$item_id = $_POST['item_id'];
+		} else {
+			$item_id = $row['id'];
+		}
 	}
 /* Default values when we haven't loaded the page because of a form action */
 } else {
 	$meeting_id = 1;
-	$item_id = 1;
+	$results = $db->query('select * from items where ' .
+			      ' meeting_id = ' . ($meeting_id + 1).
+			      ' and importance > 0' .
+			      ' order by id asc');
+	$row = $results->fetchArray();
+	if($row == False){
+		$item_id = 1;
+		echo("Failed to find important item");
+	} else {
+		$item_id = $row['id'];
+	}
 }
+
+echo("meeting id: $meeting_id item_id: $item_id");
+
 ?>
 
 <form method="post">
@@ -100,30 +149,18 @@ echo("Participants: " . $row['participants'] . "</p>");
 
 /* Query database for items in current meeting */
 $results = $db->query('select * from items where meeting_id = ' . $meeting_id
-		      . ' order by id asc');
+		      . ' and importance > 0 order by id asc');
 
 /* Fetch data on subsequent meeting */
 $meeting_id = $meeting_id + 1;
 $meetingresults = $db->query('select * from meetings where id = ' . $meeting_id);
-$meetingrow = $results->fetchArray();
+$meetingrow = $meetingresults->fetchArray();
 
 /* Determine what item in the subsequent meeting we are linking to */
-$itemresults = $db->query('select * from items where meeting_id = ' . $meeting_id
-		      . ' and id >= ' . $item_id . ' order by id asc');
+$itemresults = $db->query('select * from items where id = ' . $item_id);
 
 /* Fetch the next item for subsequent meeting */
 $itemrow = $itemresults->fetchArray();
-
-/* If we clicked next on the last item, we won't get any results
- * (item id is actually in the following meeting).
- * So decrement $item_id and just show the last item again.
- */
-if($itemrow == FALSE) {
-	$item_id = $item_id - 1;
-	$itemresults = $db->query('select * from items where meeting_id = ' . $meeting_id
-			      . ' and id >= ' . $item_id . ' order by id asc');
-	$itemrow = $itemresults->fetchArray();
-}
 
 /* Display each item in meeting and check any checkbox that is related to the
  * item we just looked up.
