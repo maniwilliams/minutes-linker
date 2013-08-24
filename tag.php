@@ -28,7 +28,7 @@ if(isset($_POST['update_form'])){
 	$meeting_id = $_POST['meeting_id'];
 	if(isset($_POST['next_meeting'])){
 		$meeting_id = $meeting_id + 1;
-		$results = $db->query('select * from items where meeting_id = ' . ($meeting_id + 1));
+		$results = $db->query('select * from items where meeting_id = ' . $meeting_id);
 		$row = $results->fetchArray();
 		if ($row == FALSE) {
 			$meeting_id = $meeting_id - 1;
