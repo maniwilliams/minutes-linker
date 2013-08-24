@@ -73,9 +73,9 @@ echo("<table><tr><th>Importance</th><th>ID</th><th>Topic</th><th>Item</th><th>Ac
 while ($row = $results->fetchArray()) {
 	echo("<tr>\n");
 	if($row['importance']>0){
-		echo("<td><input name=\"importance\" value=\"" . $row['importance'] . "\" type=\"checkbox\" checked></td>\n");
+		echo("<td><input name=\"importance[]\" value=\"" . $row['id'] . "\" type=\"checkbox\" checked></td>\n");
 	} else {
-		echo("<td><input name=\"importance\" value=\"" . $row['importance'] . "\" type=\"checkbox\"></td>\n");
+		echo("<td><input name=\"importance[]\" value=\"" . $row['id'] . "\" type=\"checkbox\"></td>\n");
 	}
 	echo("<td>" . $row['id'] . "</td>\n");
 	echo("<td>" . $row['topic'] . "</td>\n");
