@@ -46,8 +46,8 @@ if(isset($_POST['update_form'])){
 ?>
 
 <form method="post">
-<input name="update_form" value="update"/>
-<input name="meeting_id" value="<?php echo($meeting_id);?>"/>
+<input type="hidden" name="update_form" value="update"/>
+<input type="hidden" name="meeting_id" value="<?php echo($meeting_id);?>"/>
 
 <?php
 # print the meeting info
