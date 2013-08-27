@@ -120,21 +120,6 @@ if(isset($_POST['update_form'])){
 	}
 	/* If the next_meeting button was pressed */
 	if(isset($_POST['next_meeting'])){
-		if ($meeting_id < $meeting_id_next) {
-			$results = $db->query('select * from items where ' .
-				      'id > ' . $_POST['item_id'] .
-				      ' and meeting_id = ' . ($meeting_id_next).
-				      ' and importance > 0' .
-				      ' order by id desc');
-			$row = $results->fetchArray();
-			if ($row == FALSE) {
-				$item_id = $_POST['item_id'];
-			} else {
-				$item_id = $row['id'];
-			}
-		} else {
-			$item_id = $_POST['item_id'];
-		}
 		$meeting_id = $meeting_id_next;
 		# generate the updated next meeting id
 		do {
@@ -145,6 +130,22 @@ if(isset($_POST['update_form'])){
 		if ($row == FALSE || $row['category'] > 0) {
 			$meeting_id_next = $meeting_id;
 		}
+		if ($meeting_id < $meeting_id_next) {
+			$results = $db->query('select * from items where ' .
+				      'id > ' . $_POST['item_id'] .
+				      ' and meeting_id = ' . ($meeting_id_next).
+				      ' and importance > 0' .
+				      ' order by id asc');
+			$row = $results->fetchArray();
+			if ($row == FALSE) {
+				$item_id = $_POST['item_id'];
+			} else {
+				$item_id = $row['id'];
+			}
+		} else {
+			$item_id = $_POST['item_id'];
+		}
+	
 
 	}
 	/* If the prev_meeting button was pressed */
