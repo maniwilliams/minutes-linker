@@ -15,6 +15,11 @@ $db = new SQLite3('minutes.sqlite');
 <h1>Filtering Minutes Data Entry for importance</h1>
 
 <?php
+/* get the meeting id tags ready */
+$results = $db->query('select max(id) from meetings');
+$row = $results->fetchArray();
+$meeting_id_max = $row[0];
+
 # select the meeting to display
 if(isset($_POST['update_form'])){
 	if(isset($_POST['update'])) {
@@ -26,18 +31,39 @@ if(isset($_POST['update_form'])){
 		}
 	}
 	$meeting_id = $_POST['meeting_id'];
-	if(isset($_POST['next_meeting'])){
-		$meeting_id = $meeting_id + 1;
-		$results = $db->query('select * from items where meeting_id = ' . $meeting_id);
-		$row = $results->fetchArray();
-		if ($row == FALSE) {
-			$meeting_id = $meeting_id - 1;
+	if(isset($_POST['skip'])) {
+		if(isset($_POST['category'])){
+			$arr = $_POST['category'];
+			foreach ($arr as $x) {
+				$results = $db->exec('update meetings set category = 1 where id = ' . $meeting_id);
+			}
 		}
 	}
-	if(isset($_POST['prev_meeting'])){
-		if($meeting_id > 1){
-			$meeting_id = $meeting_id - 1;
+
+	if(isset($_POST['next_meeting'])){
+		$meeting_id_next = $meeting_id;
+		do {
+			$meeting_id_next = $meeting_id_next + 1;
+			$results = $db->query('select * from meetings where id = ' . $meeting_id_next);
+			$row = $results->fetchArray();
+		} while (($row == FALSE) and ( $meeting_id_next < $meeting_id_max) );
+		if ($row == FALSE) {
+			$meeting_id_next = $meeting_id;
 		}
+	
+		$meeting_id = $meeting_id_next;
+	}
+	if(isset($_POST['prev_meeting'])){
+		$meeting_id_prev = $meeting_id;
+		do {
+			$meeting_id_prev = $meeting_id_prev - 1;
+			$results = $db->query('select * from meetings where id = ' . $meeting_id_prev);
+			$row = $results->fetchArray();
+		} while (($row == FALSE) and ( $meeting_id_prev > 1) );
+		if ($row == FALSE) {
+			$meeting_id_next = $meeting_id;
+		}
+		$meeting_id = $meeting_id_prev;		
 	}
 
 } else {
@@ -58,10 +84,17 @@ echo("Group: " . $row['group_name'] . "<br/>");
 echo("Meeting Title: " . $row['title'] . "<br/>");
 echo("Date: " . $row['date'] . "<br/>");
 echo("Called By: " . $row['caller'] . "<br/>");
-echo("Participants: " . $row['participants'] . "</p>");
+echo("Participants: " . $row['participants'] . "<br/>");
+echo("Skipping?: ");
+if($row['category']>0){
+	echo("<td><input name=\"category[]\" value=\"" . $row['id'] . "\" type=\"checkbox\" checked></td>\n");
+} else {
+	echo("<td><input name=\"category[]\" value=\"" . $row['id'] . "\" type=\"checkbox\"></td>\n");
+}
+echo("</p>");
 ?>
 
-<input type="submit" name="prev_meeting" value="<"/><input type="submit" name="next_meeting" value=">"/>
+<input type="submit" name="prev_meeting" value="<"/><input type="submit" name="skip" value="Update Skip option"/><input type="submit" name="next_meeting" value=">"/>
 
 <?php
 $results = $db->query('select * from items where meeting_id = ' . $meeting_id

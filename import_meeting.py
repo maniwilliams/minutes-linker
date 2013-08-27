@@ -100,5 +100,6 @@ for filename in meetings:
             #print "{0} {1} {2} {3}".format(topic, item, action, person)
 
 cur.execute('alter table items add column importance integer')
-
+cur.execute('alter table meetings add column category integer')
+		
 con.commit()

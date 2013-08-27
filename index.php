@@ -28,10 +28,40 @@ $db = new SQLite3('minutes.sqlite');
 
 <?php
 
+
+# get the largest meeting id
+
+$results = $db->query('select max(id) from meetings');
+$row = $results->fetchArray();
+$meeting_id_max = $row[0];
+
+
+
 /* When the HTML form is submitted, the $_POST array is set */
 if(isset($_POST['update_form'])){
+	/* Get the meeting_ids ready for database query */
 	$meeting_id = $_POST['meeting_id'];
-	/* If the Update button was pressed */
+	$meeting_id_next = $meeting_id;
+	do {
+		$meeting_id_next = $meeting_id_next + 1;
+		$results = $db->query('select * from meetings where id = ' . $meeting_id_next);
+		$row = $results->fetchArray();
+	} while (($row == FALSE || $row['category'] > 0) and ( $meeting_id_next < $meeting_id_max) );
+	if ($row == FALSE  || $row['category'] > 0) {
+		$meeting_id_next = $meeting_id;
+	}
+	
+	$meeting_id_prev = $meeting_id;
+	do {
+		$meeting_id_prev = $meeting_id_prev - 1;
+		$results = $db->query('select * from meetings where id = ' . $meeting_id_prev);
+		$row = $results->fetchArray();
+	} while (($row == FALSE || $row['category'] > 0) and ( $meeting_id_prev > 1) );
+	if ($row == FALSE || $row['category'] > 0) {
+		$meeting_id_prev= $meeting_id;
+	}
+	
+	/* If the Update (item) button was pressed */
 	if(isset($_POST['update'])) {
 		/* All the related items are surrounded by spaces */
 		$related = ' ';
@@ -46,11 +76,11 @@ if(isset($_POST['update_form'])){
 		}
 		$results = $db->exec('update items set related = \'' . $related . '\' where id = ' . $_POST['item_id']);
 	}
-	/* If the Next button was pressed or the Update button was pressed */
+	/* If the Next (item) button was pressed or the Update button was pressed */
 	if(isset($_POST['next']) || isset($_POST['update'])){
 		$results = $db->query('select * from items where ' .
 				      'id > ' . $_POST['item_id'] .
-				      ' and meeting_id = ' . ($meeting_id + 1) .
+				      ' and meeting_id = ' . ($meeting_id_next) .
 				      ' and importance > 0' .
 				      ' order by id asc');
 		$row = $results->fetchArray();
@@ -59,12 +89,12 @@ if(isset($_POST['update_form'])){
 		} else {
 			$item_id = $row['id'];
 		}
-	/* If the Previous button was pressed */
+	/* If the Previous (item) button was pressed */
 	} else if(isset($_POST['prev'])){
 		$item_id = $_POST['item_id'] - 1;
 		$results = $db->query('select * from items where ' .
 				      'id < ' . $_POST['item_id'] .
-				      ' and meeting_id = ' . ($meeting_id + 1).
+				      ' and meeting_id = ' . ($meeting_id_next).
 				      ' and importance > 0' .
 				      ' order by id desc');
 		$row = $results->fetchArray();
@@ -75,42 +105,89 @@ if(isset($_POST['update_form'])){
 		}
 	/* By default we start with item 1 */
 	} else {
-		$item_id = 1;
+		#$item_id = 1; #not sure about this
+		$results = $db->query('select * from items where ' .
+				      ' meeting_id = ' . ($meeting_id).
+				      ' and importance > 0' .
+				      ' order by id desc');
+		$row = $results->fetchArray();
+		if($row == False){
+			$item_id = 1;
+			echo("Failed to find important item");
+		} else {
+			$item_id = $row['id'];
+		}
 	}
+	/* If the next_meeting button was pressed */
 	if(isset($_POST['next_meeting'])){
-		$meeting_id = $meeting_id + 1;
-		$results = $db->query('select * from items where ' .
-				      ' meeting_id = ' . ($meeting_id + 1).
+		if ($meeting_id < $meeting_id_next) {
+			$results = $db->query('select * from items where ' .
+				      'id > ' . $_POST['item_id'] .
+				      ' and meeting_id = ' . ($meeting_id_next).
 				      ' and importance > 0' .
-				      ' order by id asc');
-		$row = $results->fetchArray();
-		if ($row == FALSE) {
-			$meeting_id = $meeting_id - 1;
-			$item_id = $_POST['item_id'];
+				      ' order by id desc');
+			$row = $results->fetchArray();
+			if ($row == FALSE) {
+				$item_id = $_POST['item_id'];
+			} else {
+				$item_id = $row['id'];
+			}
 		} else {
-			$item_id = $row['id'];
+			$item_id = $_POST['item_id'];
 		}
+		$meeting_id = $meeting_id_next;
+		# generate the updated next meeting id
+		do {
+			$meeting_id_next = $meeting_id_next + 1;
+			$results = $db->query('select * from meetings where id = ' . $meeting_id_next);
+			$row = $results->fetchArray();
+		} while (($row == FALSE || $row['category'] > 0) and ( $meeting_id_next < $meeting_id_max) );
+		if ($row == FALSE || $row['category'] > 0) {
+			$meeting_id_next = $meeting_id;
+		}
+
 	}
+	/* If the prev_meeting button was pressed */
 	if(isset($_POST['prev_meeting'])){
-		if($meeting_id > 1){
-			$meeting_id = $meeting_id - 1;
-		}
-		$results = $db->query('select * from items where ' .
-				      ' meeting_id = ' . ($meeting_id + 1).
+		if($meeting_id_prev < $meeting_id) {
+			$results = $db->query('select * from items where ' .
+				      'id < ' . $_POST['item_id'] .
+				      ' and meeting_id = ' . ($meeting_id).
 				      ' and importance > 0' .
-				      ' order by id asc');
-		$row = $results->fetchArray();
-		if ($row == FALSE) {
-			$item_id = $_POST['item_id'];
+				      ' order by id desc');
+			$row = $results->fetchArray();
+			if ($row == FALSE) {
+				$item_id = $_POST['item_id'];
+			} else {
+				$item_id = $row['id'];
+			}
 		} else {
-			$item_id = $row['id'];
+			$item_id = $_POST['item_id'];
 		}
+		$meeting_id = $meeting_id_prev;
 	}
 /* Default values when we haven't loaded the page because of a form action */
 } else {
-	$meeting_id = 1;
+	/* Find the first meeting */
+	$meeting_id = 0;
+	do {
+		$meeting_id = $meeting_id + 1;
+		$results = $db->query('select * from meetings where id = ' . $meeting_id);
+		$row = $results->fetchArray();
+	} while (($row == FALSE || $row['category'] > 0) and ( $meeting_id < $meeting_id_max) );
+
+	$meeting_id_next = $meeting_id;
+	do {
+		$meeting_id_next = $meeting_id_next + 1;
+		$results = $db->query('select * from meetings where id = ' . $meeting_id_next);
+		$row = $results->fetchArray();
+	} while (($row == FALSE || $row['category'] > 0) and ( $meeting_id_next < $meeting_id_max) );
+	if ($row == FALSE) {
+		$meeting_id_next = $meeting_id;
+	}
+
 	$results = $db->query('select * from items where ' .
-			      ' meeting_id = ' . ($meeting_id + 1).
+			      ' meeting_id = ' . ($meeting_id_next).
 			      ' and importance > 0' .
 			      ' order by id asc');
 	$row = $results->fetchArray();
@@ -122,13 +199,14 @@ if(isset($_POST['update_form'])){
 	}
 }
 
-echo("meeting id: $meeting_id item_id: $item_id");
+echo("DEBUGGING - meeting id: $meeting_id item_id: $item_id");
 
 ?>
 
 <form method="post">
 <input type="hidden" name="update_form" value="update"/>
 <input type="hidden" name="meeting_id" value="<?php echo($meeting_id);?>"/>
+<input type="hidden" name="item_id" value="<?php echo($item_id);?>"/
 
 <?php
 
@@ -143,7 +221,7 @@ echo("Called By: " . $row['caller'] . "<br/>");
 echo("Participants: " . $row['participants'] . "</p>");
 ?>
 
-<input type="submit" name="prev_meeting" value="<"/><input type="submit" name="next_meeting" value=">"/>
+<input type="submit" name="prev_meeting" value="< meeting "/><input type="submit" name="next_meeting" value=" meeting >"/>
 
 <?php
 
@@ -152,8 +230,8 @@ $results = $db->query('select * from items where meeting_id = ' . $meeting_id
 		      . ' and importance > 0 order by id asc');
 
 /* Fetch data on subsequent meeting */
-$meeting_id = $meeting_id + 1;
-$meetingresults = $db->query('select * from meetings where id = ' . $meeting_id);
+#$meeting_id = $meeting_id_next;
+$meetingresults = $db->query('select * from meetings where id = ' . $meeting_id_next);
 $meetingrow = $meetingresults->fetchArray();
 
 /* Determine what item in the subsequent meeting we are linking to */
@@ -179,7 +257,7 @@ while ($row = $results->fetchArray()) {
 echo("</table>");
 
 /*Display the subsequent meeting details */
-echo("<p>Meeting ID: " . $meeting_id . "<br/>");
+echo("<p>Meeting ID: " . $meeting_id_next . "<br/>");
 echo("Group: " . $meetingrow['group_name'] . "<br/>");
 echo("Meeting Title: " . $meetingrow['title'] . "<br/>");
 echo("Date: " . $meetingrow['date'] . "<br/>");
@@ -197,7 +275,6 @@ echo("<table><tr><th>ID</th><th>Topic</th><th>Item</th><th>Action</th><th>Person
 	echo("</tr>\n");
 echo("</table>");
 ?>
-<input type="hidden" name="item_id" value="<?php echo($itemrow['id']);?>"/>
 <input type="submit" name="prev" value="<"/><input type="submit" name="update" value="Update"/><input type="submit" name="next" value=">"/>
 </form>
 
