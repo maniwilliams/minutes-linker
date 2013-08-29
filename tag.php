@@ -37,6 +37,8 @@ if(isset($_POST['update_form'])){
 			foreach ($arr as $x) {
 				$results = $db->exec('update meetings set category = 1 where id = ' . $meeting_id);
 			}
+		} else {
+			$results = $db->exec('update meetings set category = 0 where id = ' . $meeting_id);
 		}
 	}
 
@@ -61,7 +63,7 @@ if(isset($_POST['update_form'])){
 			$row = $results->fetchArray();
 		} while (($row == FALSE) and ( $meeting_id_prev > 1) );
 		if ($row == FALSE) {
-			$meeting_id_next = $meeting_id;
+			$meeting_id_prev = $meeting_id;
 		}
 		$meeting_id = $meeting_id_prev;		
 	}
